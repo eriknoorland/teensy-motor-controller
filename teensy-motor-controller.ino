@@ -1,12 +1,19 @@
 #include "PacketSerial.h"
 #include "MotorController.h"
 
-const bool DEBUG = false;
-
+const int MOTOR_LEFT_ENABLE_PIN = 0;
+const int MOTOR_LEFT_ENABLEB_PIN = 1;
+const int MOTOR_LEFT_PWM1_PIN = 3;
+const int MOTOR_LEFT_PWM2_PIN = 2;
 const int MOTOR_LEFT_ENCODER_A_PIN = 17;
 const int MOTOR_LEFT_ENCODER_B_PIN = 16;
-const int MOTOR_RIGHT_ENCODER_A_PIN = 15;
-const int MOTOR_RIGHT_ENCODER_B_PIN = 14;
+
+const int MOTOR_RIGHT_ENABLE_PIN = 9;
+const int MOTOR_RIGHT_ENABLEB_PIN = 10;
+const int MOTOR_RIGHT_PWM1_PIN = 12;
+const int MOTOR_RIGHT_PWM2_PIN = 11;
+const int MOTOR_RIGHT_ENCODER_A_PIN = 14;
+const int MOTOR_RIGHT_ENCODER_B_PIN = 15;
 
 const byte REQUEST_START_FLAG = 0xA3;
 const byte REQUEST_IS_READY = 0x01;
@@ -21,13 +28,12 @@ const byte RESPONSE_ODOMETRY = 0x30;
 const byte RESPONSE_READY = 0xFF;
 
 const int loopTime = 20;
+unsigned long previousTime = 0;
 
 MotorController leftMotorController = MotorController();
 MotorController rightMotorController = MotorController();
 
 PacketSerial serial;
-
-unsigned long previousTime = millis();
 
 /**
  * Serial packet received event handler
@@ -106,18 +112,32 @@ void onRightEncoderTick() {
 void setup() {
   Serial.begin(115200);
 
-  if (!DEBUG) {
-    serial.setStream(&Serial);
-    serial.setPacketHandler(&onPacketReceived);
-  }
+  serial.setStream(&Serial);
+  serial.setPacketHandler(&onPacketReceived);
 
   analogWriteResolution(10);
 
-  leftMotorController.setup(4, 5, 6, 12, MOTOR_LEFT_ENCODER_A_PIN, MOTOR_LEFT_ENCODER_B_PIN);
+  leftMotorController.setup(
+    MOTOR_LEFT_ENABLE_PIN,
+    MOTOR_LEFT_ENABLEB_PIN,
+    MOTOR_LEFT_PWM1_PIN,
+    MOTOR_LEFT_PWM2_PIN,
+    MOTOR_LEFT_ENCODER_A_PIN,
+    MOTOR_LEFT_ENCODER_B_PIN
+  );
+
   leftMotorController.setControlLimits(0, 1023);
   leftMotorController.setLoopTime(loopTime);
 
-  rightMotorController.setup(8, 9, 10, 11, MOTOR_RIGHT_ENCODER_A_PIN, MOTOR_RIGHT_ENCODER_B_PIN);
+  rightMotorController.setup(
+    MOTOR_RIGHT_ENABLE_PIN,
+    MOTOR_RIGHT_ENABLEB_PIN,
+    MOTOR_RIGHT_PWM1_PIN,
+    MOTOR_RIGHT_PWM2_PIN,
+    MOTOR_RIGHT_ENCODER_A_PIN,
+    MOTOR_RIGHT_ENCODER_B_PIN
+  );
+
   rightMotorController.setControlLimits(0, 1023);
   rightMotorController.setLoopTime(loopTime);
 
@@ -128,14 +148,9 @@ void setup() {
 
   while (!Serial) {}
 
-  uint8_t readyResponse[4] = {
-    RESPONSE_START_FLAG_1,
-    RESPONSE_START_FLAG_2,
-    RESPONSE_READY,
-    0x00
-  };
+  isReady();
 
-  serial.send(readyResponse, sizeof(readyResponse));
+  previousTime = millis();
 }
 
 /**
