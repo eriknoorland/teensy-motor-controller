@@ -10,8 +10,8 @@ const int MOTOR_LEFT_ENCODER_B_PIN = 16;
 
 const int MOTOR_RIGHT_ENABLE_PIN = 9;
 const int MOTOR_RIGHT_ENABLEB_PIN = 10;
-const int MOTOR_RIGHT_PWM1_PIN = 12;
-const int MOTOR_RIGHT_PWM2_PIN = 11;
+const int MOTOR_RIGHT_PWM1_PIN = 11;
+const int MOTOR_RIGHT_PWM2_PIN = 12;
 const int MOTOR_RIGHT_ENCODER_A_PIN = 14;
 const int MOTOR_RIGHT_ENCODER_B_PIN = 15;
 
@@ -27,6 +27,8 @@ const byte RESPONSE_START_FLAG_2 = 0x3A;
 const byte RESPONSE_ODOMETRY = 0x30;
 const byte RESPONSE_READY = 0xFF;
 
+const int pwmResolution = 13;
+const int pwmControlLimit = 1023; // pow(2, pwmResolution) - 1;
 const int loopTime = 20;
 unsigned long previousTime = 0;
 
@@ -115,7 +117,11 @@ void setup() {
   serial.setStream(&Serial);
   serial.setPacketHandler(&onPacketReceived);
 
-  analogWriteResolution(10);
+  analogWriteResolution(pwmResolution);
+  analogWriteFrequency(MOTOR_LEFT_PWM1_PIN, 18310.55);
+  analogWriteFrequency(MOTOR_LEFT_PWM2_PIN, 18310.55);
+  analogWriteFrequency(MOTOR_RIGHT_PWM1_PIN, 18310.55);
+  analogWriteFrequency(MOTOR_RIGHT_PWM2_PIN, 18310.55);
 
   leftMotorController.setup(
     MOTOR_LEFT_ENABLE_PIN,
@@ -126,7 +132,7 @@ void setup() {
     MOTOR_LEFT_ENCODER_B_PIN
   );
 
-  leftMotorController.setControlLimits(0, 1023);
+  leftMotorController.setControlLimits(0, pwmControlLimit);
   leftMotorController.setLoopTime(loopTime);
 
   rightMotorController.setup(
@@ -138,7 +144,7 @@ void setup() {
     MOTOR_RIGHT_ENCODER_B_PIN
   );
 
-  rightMotorController.setControlLimits(0, 1023);
+  rightMotorController.setControlLimits(0, pwmControlLimit);
   rightMotorController.setLoopTime(loopTime);
 
   attachInterrupt(MOTOR_LEFT_ENCODER_A_PIN, onLeftEncoderTick, CHANGE);

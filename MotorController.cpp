@@ -67,7 +67,7 @@ void MotorController::loop() {
 
   if (pidEnabled) {
     if (_speedPID.Compute()) {
-      motorControl(round(_speedPwmOutput), _direction);
+      motorControl(round(_speedPwmOutput * 8), _direction);
     }
 
     return;
