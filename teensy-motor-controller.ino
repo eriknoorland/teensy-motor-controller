@@ -30,8 +30,8 @@ const byte RESPONSE_READY = 0xFF;
 const int loopTime = 20;
 unsigned long previousTime = 0;
 
-MotorController leftMotorController = MotorController();
-MotorController rightMotorController = MotorController();
+MotorController leftMotorController = MotorController(3, 90, 0.1);
+MotorController rightMotorController = MotorController(3, 90, 0.1);
 
 PacketSerial serial;
 

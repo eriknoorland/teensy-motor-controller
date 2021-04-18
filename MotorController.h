@@ -6,7 +6,7 @@
 
 class MotorController {
   public:
-    MotorController();
+    MotorController(float pGain, float iGain, float dGain);
     void setup(int enable, int enableB, int pwm1, int pwm2, int encoderA, int encoderB);
     void setLoopTime(int loopTime);
     void setControlLimits(int min, int max);

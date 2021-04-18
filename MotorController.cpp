@@ -4,10 +4,11 @@
 
 /**
  * MotorController
- * @param maxSpeed
- * @param loopTime
+ * @param pGain
+ * @param iGain
+ * @param dGain
  */
-MotorController::MotorController() : _speedPID(&_speedTicksInput, &_speedPwmOutput, &_speedSetpoint, 3, 90, 0.1, DIRECT) {
+MotorController::MotorController(float pGain, float iGain, float dGain) : _speedPID(&_speedTicksInput, &_speedPwmOutput, &_speedSetpoint, pGain, iGain, dGain, DIRECT) {
   _speedPID.SetMode(AUTOMATIC);
   _numTicks = 0;
   _numLastTicks = 0;
