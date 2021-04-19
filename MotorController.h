@@ -4,6 +4,12 @@
 #include "Arduino.h"
 #include "PID_v1.h"
 
+struct MotorDebugData {
+  int speedSetpoint;
+  int speedTicksInput;
+  int speedPwmOutput;
+};
+
 class MotorController {
   public:
     MotorController(float pGain, float iGain, float dGain);
@@ -18,6 +24,7 @@ class MotorController {
     void onEncoderTick();
     int update();
     int getDirection();
+    MotorDebugData getDebugData();
 
   private:
     PID _speedPID;

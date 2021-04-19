@@ -67,7 +67,7 @@ void MotorController::loop() {
 
   if (pidEnabled) {
     if (_speedPID.Compute()) {
-      motorControl(round(_speedPwmOutput * 8), _direction);
+      motorControl(round(_speedPwmOutput * 8), _direction); // FIXME remove multiply by 8 when updating pid value to accomodate new 13 bit resolution
     }
 
     return;
@@ -100,6 +100,20 @@ void MotorController::setDirection(int direction) {
  */
 int MotorController::getDirection() {
   return _direction == 1 ? _direction : 0;
+}
+
+/**
+ * Returns pid debug data
+ * @return MotorDebugData
+ */
+MotorDebugData MotorController::getDebugData() {
+  MotorDebugData debugData = {
+    _speedSetpoint,
+    _speedTicksInput,
+    _speedPwmOutput,
+  };
+
+  return debugData;
 }
 
 /**

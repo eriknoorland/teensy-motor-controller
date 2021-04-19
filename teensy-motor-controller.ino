@@ -17,6 +17,7 @@ const int MOTOR_RIGHT_ENCODER_B_PIN = 15;
 
 const byte REQUEST_START_FLAG = 0xA3;
 const byte REQUEST_IS_READY = 0x01;
+const byte REQUEST_DEBUG_LEVEL = 0x02;
 const byte REQUEST_SET_MOTOR_DIRECTIONS = 0x10;
 const byte REQUEST_SET_MOTOR_SPEEDS = 0x11;
 const byte REQUEST_SET_MOTOR_PWM = 0x12;
@@ -25,12 +26,14 @@ const byte REQUEST_MOTOR_STOP = 0x13;
 const byte RESPONSE_START_FLAG_1 = 0xA3;
 const byte RESPONSE_START_FLAG_2 = 0x3A;
 const byte RESPONSE_ODOMETRY = 0x30;
+const byte RESPONSE_DEBUG = 0x35;
 const byte RESPONSE_READY = 0xFF;
 
 const int pwmResolution = 13;
-const int pwmControlLimit = 1023; // pow(2, pwmResolution) - 1;
+const int pwmControlLimit = (pow(2, pwmResolution) / 8) - 1; // FIXME remove division by 8 when updating pid value to accomodate new 13 bit resolution
 const int loopTime = 20;
 unsigned long previousTime = 0;
+bool isDebugEnabled = false;
 
 MotorController leftMotorController = MotorController(3, 90, 0.1);
 MotorController rightMotorController = MotorController(3, 90, 0.1);
@@ -71,6 +74,11 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
         break;
       }
 
+      case REQUEST_DEBUG_LEVEL: {
+        setDebugLevel(buffer[2]);
+        break;
+      }
+
       case REQUEST_SET_MOTOR_DIRECTIONS: {
         leftMotorController.setDirection(buffer[2]);
         rightMotorController.setDirection(buffer[3]);
@@ -88,10 +96,73 @@ void isReady() {
     RESPONSE_START_FLAG_1,
     RESPONSE_START_FLAG_2,
     RESPONSE_READY,
-    0x00
+    0x00,
   };
 
   serial.send(readyResponse, sizeof(readyResponse));
+}
+
+/**
+ * Odometry response handler
+ */
+void handleOdometryResponse() {
+  int leftMotorTicks = leftMotorController.update();
+  int rightMotorTicks = rightMotorController.update();
+  int leftMotorDirection = leftMotorController.getDirection();
+  int rightMotorDirection = rightMotorController.getDirection();
+
+  uint8_t response[8] = {
+    RESPONSE_START_FLAG_1,
+    RESPONSE_START_FLAG_2,
+    RESPONSE_ODOMETRY,
+    0x04,
+    leftMotorTicks,
+    leftMotorDirection,
+    rightMotorTicks,
+    rightMotorDirection,
+  };
+
+  serial.send(response, sizeof(response));
+}
+
+/**
+ * Debug response handler
+ * @param {int} deltaTime
+ */
+void handleDebugResponse(int deltaTime) {
+  MotorDebugData leftDebugData = leftMotorController.getDebugData();
+  MotorDebugData rightDebugData = rightMotorController.getDebugData();
+
+  byte leftSpeedPwmOutputPartMsb = leftDebugData.speedPwmOutput >> 8;
+  byte leftSpeedPwmOutputPartLsb = leftDebugData.speedPwmOutput;
+  byte rightSpeedPwmOutputPartMsb = rightDebugData.speedPwmOutput >> 8;
+  byte rightSpeedPwmOutputPartLsb = rightDebugData.speedPwmOutput;
+
+  uint8_t response[13] = {
+    RESPONSE_START_FLAG_1,
+    RESPONSE_START_FLAG_2,
+    RESPONSE_DEBUG,
+    0x09,
+    deltaTime,
+    leftDebugData.speedSetpoint,
+    leftDebugData.speedTicksInput,
+    leftSpeedPwmOutputPartMsb,
+    leftSpeedPwmOutputPartLsb,
+    rightDebugData.speedSetpoint,
+    rightDebugData.speedTicksInput,
+    rightSpeedPwmOutputPartMsb,
+    rightSpeedPwmOutputPartLsb,
+  };
+
+  serial.send(response, sizeof(response));
+}
+
+/**
+ * Set config flags
+ * @param {int} debugFlag
+ */
+void setDebugLevel(int debugFlag) {
+  isDebugEnabled = debugFlag == 1;
 }
 
 /**
@@ -169,25 +240,14 @@ void loop() {
   rightMotorController.loop();
 
   long now = millis();
+  int deltaTime = now - previousTime;
 
-  if (now - previousTime >= loopTime) {
-    int leftMotorTicks = leftMotorController.update();
-    int rightMotorTicks = rightMotorController.update();
-    int leftMotorDirection = leftMotorController.getDirection();
-    int rightMotorDirection = rightMotorController.getDirection();
+  if (deltaTime >= loopTime) {
+    handleOdometryResponse();
 
-    uint8_t response[8] = {
-      RESPONSE_START_FLAG_1,
-      RESPONSE_START_FLAG_2,
-      RESPONSE_ODOMETRY,
-      0x04,
-      leftMotorTicks,
-      leftMotorDirection,
-      rightMotorTicks,
-      rightMotorDirection
-    };
-
-    serial.send(response, sizeof(response));
+    if (isDebugEnabled) {
+      handleDebugResponse(deltaTime);
+    }
 
     previousTime = now;
   }
